@@ -46,6 +46,10 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=appuser:appuser . .
 
+# Remove build-only packaging tools and any stray wheel archives from runtime image
+RUN /opt/venv/bin/pip uninstall -y pip setuptools wheel \
+    && find / -name "*.whl" -delete 2>/dev/null || true
+
 USER appuser
 
 EXPOSE 8000
