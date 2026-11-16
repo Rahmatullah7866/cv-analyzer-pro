@@ -1,12 +1,10 @@
-# Multi-stage hardened build
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
     default-libmysqlclient-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" "jaraco.context>=6.1.0"
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
