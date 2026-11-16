@@ -18,7 +18,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" "jaraco.context>=6.1.0"
+    && pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" "jaraco.context>=6.1.0" \
+    && rm -rf /usr/local/lib/python3.11/site-packages/setuptools-70.3.0.dist-info
 
 # Non-root user setup
 RUN useradd -m -u 1000 appuser && \
