@@ -1,4 +1,4 @@
-# Multi-stage hardened build on Debian Bookworm Slim (no bundled ensurepip wheels)
+# Multi-stage hardened build on Debian Bookworm Slim
 FROM debian:bookworm-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -13,7 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m venv /opt/venv
+RUN python3 -m venv --without-pip /opt/venv \
+    && apt-get update && apt-get install -y --no-install-recommends curl \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | /opt/venv/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
