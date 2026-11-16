@@ -1,35 +1,48 @@
-# Multi-stage hardened build
-FROM python:3.12-slim AS builder
+# Multi-stage hardened build on Debian Bookworm Slim (no bundled ensurepip wheels)
+FROM debian:bookworm-slim AS builder
 
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-venv \
+    python3-dev \
     gcc \
     default-libmysqlclient-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-FROM python:3.12-slim
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Final Runtime Stage
+FROM debian:bookworm-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    default-libmysqlclient-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" "jaraco.context>=6.1.0"
+    python3 \
+    libmariadb3 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Non-root user setup
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /app/staticfiles /app/media && \
     chown -R appuser:appuser /app
 
-COPY --from=builder /root/.local /home/appuser/.local
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
 COPY --chown=appuser:appuser . .
 
 USER appuser
-ENV PATH=/home/appuser/.local/bin:$PATH
-ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
