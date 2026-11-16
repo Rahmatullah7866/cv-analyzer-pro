@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cv_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cv_analyzer_db
+      MYSQL_USER: cv_user
+      MYSQL_PASSWORD: cv_secret_pass
+      MYSQL_ROOT_PASSWORD: cv_root_secret_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cv_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cv_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - cv_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cv_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      - DEBUG=True
+      - DJANGO_SECRET_KEY=dev-secret-key-12345
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,frontend
+      - MYSQL_DATABASE=cv_analyzer_db
+      - MYSQL_USER=cv_user
+      - MYSQL_PASSWORD=cv_secret_pass
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2:3b
+    ports:
+      - "8000:8000"
+    networks:
+      - cv_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cv_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - cv_network
+
+networks:
+  cv_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  ollama_models:

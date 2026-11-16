@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cv-backend
+  labels:
+    app: cv-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cv-backend
+  template:
+    metadata:
+      labels:
+        app: cv-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: backend
+        image: cv-analyzer-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+        env:
+        - name: MYSQL_HOST
+          value: "mysql-service"
+        - name: OLLAMA_HOST
+          value: "http://ollama-service:11434"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: ClusterIP
+  selector:
+    app: cv-backend
+  ports:
+  - port: 8000
+    targetPort: 8000
